@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/danibcorr/se-ml-wiki/actions/workflows/workflow.yml"><img src="https://github.com/danibcorr/se-ml-wiki/actions/workflows/workflow.yml/badge.svg"></a>
-  <a href="https://github.com/danibcorr/se-ml-wiki/blob/main/LICENSE" target="_blank">
-      <img src="https://img.shields.io/github/license/danibcorr/se-ml-wiki" alt="License">
+  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es" target="_blank">
+    <img src="https://img.shields.io/badge/licencia-CC%20BY--NC--SA%204.0-blue" alt="Licencia CC BY-NC-SA 4.0">
   </a>
 </p>
 
