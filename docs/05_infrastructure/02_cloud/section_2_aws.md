@@ -2,7 +2,8 @@
 authors: Daniel Bazo Correa
 description:
     Conceptos fundamentales de Amazon Web Services, desde la infraestructura global
-    hasta los principales servicios de cómputo, almacenamiento y redes.
+    hasta los principales servicios de cómputo, almacenamiento, redes, bases de datos y
+    analítica.
 title: Amazon Web Services (AWS)
 ---
 
@@ -15,7 +16,14 @@ title: Amazon Web Services (AWS)
 
 Este capítulo recorre los servicios principales de Amazon Web Services, desde la
 infraestructura global y la gestión de identidades hasta los servicios de cómputo,
-almacenamiento y despliegue.
+almacenamiento, bases de datos, analítica y despliegue.
+
+## Bibliografía
+
+- Amazon Web Services. (s.f.). _AWS Cloud Practitioner Essentials_ \[Curso\]. AWS Skill
+  Builder.
+  <https://skillbuilder.aws/learn/94T2BEN85A/aws-cloud-practitioner-essentials/8D79F3AVR7>
+- Amazon Web Services. (s.f.). _AWS Documentation_. <https://docs.aws.amazon.com/>
 
 ## Introducción
 
@@ -36,7 +44,7 @@ experimentación. Además, el despliegue global resulta inmediato gracias a la e
 de centros de datos distribuidos por todo el mundo.
 
 Toda operación dentro de AWS se realiza mediante llamadas a una interfaz de programación
-de aplicaciones (API). Ya sea crear una instancia de cómputo, almacenar un fichero o
+de aplicaciones (API). Ya sea crear una instancia de cómputo, almacenar un archivo o
 configurar una red, cada acción se traduce internamente en una petición API. Existen
 tres formas principales de interactuar con estas API. La primera es la **AWS Management
 Console**, una interfaz web gráfica que permite gestionar los servicios de forma visual
@@ -188,6 +196,42 @@ una conexión VPN. Se asocia a una VPC y actúa como punto de terminación de lo
 VPN, permitiendo que el tráfico procedente de la red corporativa acceda a los recursos
 de la VPC de forma segura.
 
+La diferencia práctica entre ambas familias de conexión está en el medio que utilizan.
+Una VPN de sitio a sitio viaja por Internet, de modo que el ancho de banda es compartido
+y el rendimiento depende del estado de la red pública, aunque su despliegue es inmediato
+y no requiere obra física. Direct Connect, en cambio, proporciona un enlace privado y
+dedicado, adecuado para transferencias masivas y sostenidas de datos, a costa de un
+plazo de provisión mucho mayor. Ambas opciones no son excluyentes, ya que resulta
+habitual configurar una VPN como camino alternativo (_fallback_) que asuma el tráfico si
+el enlace dedicado deja de estar disponible.
+
+### Enrutado global y entrega de contenido
+
+Las conexiones anteriores resuelven la comunicación entre redes concretas, pero una
+aplicación con usuarios repartidos por el mundo necesita además decidir a qué región
+debe dirigirse cada petición. Esa decisión se toma en la resolución de nombres.
+
+**Amazon Route 53** es el servicio de DNS (_Domain Name System_) gestionado de AWS. Su
+función básica consiste en traducir los nombres de dominio en las direcciones IP de los
+recursos que atienden el servicio, y sobre esa función se apoyan las políticas de
+enrutado. La política más simple reparte las peticiones de forma rotatoria entre varios
+destinos (_round robin_). La política de latencia dirige al usuario a la región que
+ofrece el tiempo de respuesta más bajo. La política de geolocalización decide en función
+de la ubicación del solicitante, lo que resulta útil para servir contenido adaptado a
+cada país o para cumplir requisitos normativos. La política ponderada reparte el tráfico
+en la proporción indicada, un mecanismo que habilita despliegues progresivos. Route 53
+puede además comprobar el estado de los destinos y excluir de las respuestas los que no
+responden, con lo que aporta conmutación por error a escala global.
+
+Una vez resuelto el nombre, el contenido estático no tiene que recorrer necesariamente
+toda la distancia hasta la región. Amazon CloudFront almacena copias en las _Edge
+Locations_ y responde desde el punto de presencia más próximo al usuario, de modo que
+solo las peticiones que no puede satisfacer con su caché llegan al origen. El recorrido
+completo de una petición en una arquitectura global atraviesa por tanto Route 53, que
+selecciona el destino, la _Edge Location_ de CloudFront, que sirve lo que tiene en
+caché, y finalmente la región de origen, donde los recursos residen dentro de una o
+varias VPC.
+
 ### Control de tráfico (Security Groups y ACL)
 
 La seguridad a nivel de red se gestiona mediante dos mecanismos complementarios.
@@ -252,7 +296,7 @@ cantidades de RAM, como bases de datos en memoria. Las instancias de computació
 acelerada (_Accelerated Computing_) incorporan aceleradores de _hardware_ como GPU para
 tareas de aprendizaje profundo o renderizado gráfico. Las instancias optimizadas para
 almacenamiento (_Storage Optimized_) ofrecen alto rendimiento de lectura y escritura en
-disco para bases de datos distribuidas o sistemas de ficheros de alto rendimiento.
+disco para bases de datos distribuidas o sistemas de archivos de alto rendimiento.
 
 La nomenclatura de las instancias sigue un patrón estandarizado. Por ejemplo, en
 `t3.medium`, la letra `t` identifica la familia, el número `3` indica la generación y
@@ -346,7 +390,7 @@ paradigma de _Function as a Service_ (FaaS). El funcionamiento consiste en empaq
 código en una función _Lambda_, configurar uno o varios **_triggers_**
 (desencadenadores) y dejar que el servicio ejecute la función automáticamente cada vez
 que se produce el evento asociado. Los _triggers_ pueden ser muy variados: una petición
-HTTPS a través de _API Gateway_, la subida de un fichero a Amazon S3, un mensaje en una
+HTTPS a través de _API Gateway_, la subida de un archivo a Amazon S3, un mensaje en una
 cola de Amazon SQS o un evento programado, entre otros.
 
 AWS Lambda escala de forma automática replicando las instancias de la función en
@@ -479,23 +523,315 @@ cada evento al destino adecuado en función de su contenido.
 
 ## Almacenamiento
 
+AWS agrupa sus servicios de almacenamiento en tres familias que se diferencian por la
+unidad mínima con la que trabajan. De esa unidad se derivan sus prestaciones, sus
+protocolos de acceso y su coste, de modo que la elección condiciona el rendimiento de la
+aplicación completa.
+
+El **almacenamiento de bloques** divide la información en bloques de tamaño fijo que se
+gestionan de forma individual. Modificar un archivo solo obliga a reescribir los bloques
+afectados, lo que proporciona un comportamiento equivalente al de un disco físico y lo
+convierte en la base de los sistemas operativos y de las bases de datos.
+
+El **almacenamiento de objetos** trata cada elemento como una unidad indivisible formada
+por los datos, un identificador único y un conjunto de metadatos. Cualquier modificación
+implica reescribir el objeto completo, y el acceso se realiza mediante llamadas a una
+API en lugar de mediante un sistema de archivos. Resulta idóneo para contenido que se
+escribe una vez y se consulta íntegro muchas veces.
+
+El **almacenamiento de archivos** expone una jerarquía de directorios accesible a través
+de protocolos de red, lo que permite que varias máquinas trabajen simultáneamente sobre
+el mismo árbol de archivos con la semántica habitual de un sistema de archivos.
+
+La decisión entre las tres familias depende de si la información se recupera al completo
+o de forma parcial, de la latencia y del rendimiento de lectura y escritura requeridos,
+del número de máquinas que necesitan acceso concurrente y de la granularidad con la que
+deben concederse los permisos.
+
+### Almacenamiento de bloques
+
+Las instancias de EC2 disponen de un almacenamiento efímero denominado **_instance
+store_**, formado por volúmenes físicamente adheridos al servidor que aloja la
+instancia. Ofrece un rendimiento muy elevado, pero su contenido desaparece cuando la
+instancia se detiene o se termina, por lo que solo resulta adecuado para datos
+temporales, cachés o resultados intermedios.
+
+**Amazon EBS** (_Elastic Block Store_) proporciona discos virtuales persistentes que se
+asocian a una instancia y cuyo ciclo de vida es independiente del de esta. Un volumen de
+EBS reside en una única zona de disponibilidad, dentro de la cual AWS replica
+automáticamente su contenido para garantizar durabilidad y disponibilidad. El
+rendimiento se expresa en **IOPS** (_input/output operations per second_), que miden el
+número de operaciones de lectura y escritura por segundo, y en el ancho de banda
+sostenido del volumen. Los volúmenes respaldados por SSD favorecen las cargas
+transaccionales con accesos aleatorios frecuentes, como las bases de datos, mientras que
+los respaldados por HDD resultan más económicos para accesos secuenciales sobre grandes
+volúmenes de datos. Tanto el tamaño como el tipo de volumen pueden modificarse sin
+detener la instancia.
+
+Las copias de seguridad de EBS se realizan mediante **_snapshots_**, capturas del estado
+del volumen en un instante concreto. Los _snapshots_ son incrementales, ya que después
+de la primera captura solo se almacenan los bloques que han cambiado respecto a la
+anterior, lo que reduce de forma notable el tiempo y el coste de las copias. A partir de
+un _snapshot_ es posible crear un volumen nuevo, incluso en otra zona de disponibilidad
+o en otra región, lo que permite migrar datos y replicar entornos completos, por ejemplo
+para levantar un entorno de pruebas a partir de los datos de producción. **Amazon Data
+Lifecycle Manager** automatiza este ciclo mediante políticas que definen cada cuánto se
+crean los _snapshots_, cuántos se conservan y cuándo se eliminan.
+
+### Almacenamiento de objetos con Amazon S3
+
 **Amazon S3** (_Simple Storage Service_) es el servicio de almacenamiento de objetos de
 AWS. Permite almacenar y recuperar cualquier cantidad de datos, de cualquier tipo de
-fichero, en cualquier momento y desde cualquier lugar. S3 organiza los datos en
+archivo, en cualquier momento y desde cualquier lugar. S3 organiza los datos en
 **buckets** (contenedores) y cada objeto almacenado se identifica mediante una clave
-única. El servicio ofrece una durabilidad del 99,999999999 % (once nueves) y está
-diseñado para soportar prácticamente cualquier caso de uso, desde el alojamiento de
-sitios web estáticos hasta el almacenamiento de copias de seguridad, _data lakes_ y
-contenido multimedia.
+única dentro de su _bucket_. El número de objetos por _bucket_ es ilimitado y el tamaño
+máximo de un objeto individual es de 5 TB, si bien la carga de objetos grandes se
+realiza por partes (_multipart upload_) para poder reanudarla ante un fallo de red. El
+servicio ofrece una durabilidad del 99,999999999 % (once nueves) y está diseñado para
+soportar prácticamente cualquier caso de uso, desde el alojamiento de sitios web
+estáticos hasta el almacenamiento de copias de seguridad, _data lakes_ y contenido
+multimedia.
 
-**Amazon RDS** (_Relational Database Service_) es un servicio gestionado que facilita la
+El **versionado** puede habilitarse a nivel de _bucket_ para conservar todas las
+revisiones de un mismo objeto. Con el versionado activo, una sobrescritura o un borrado
+accidental no destruyen la información, ya que las versiones anteriores permanecen
+accesibles. S3 puede además emitir notificaciones cuando se crea o se elimina un objeto,
+lo que habilita flujos de procesamiento basados en eventos, como la invocación de una
+función Lambda al subirse un archivo.
+
+El control de acceso se articula en dos niveles complementarios. Las **políticas de
+_bucket_** son documentos JSON asociados al recurso que conceden o deniegan permisos de
+lectura y escritura a identidades concretas, y actúan de forma coordinada con las
+políticas de IAM. Por encima de ellas, **S3 Block Public Access** funciona como un
+interruptor de seguridad a nivel de cuenta o de _bucket_ que bloquea cualquier acceso
+público, incluso cuando una política del _bucket_ lo permitiría de forma explícita. Esta
+prevalencia es deliberada, puesto que la exposición pública involuntaria de un _bucket_
+constituye uno de los errores de configuración más frecuentes y de mayor impacto.
+
+#### Clases de almacenamiento
+
+No toda la información se consulta con la misma frecuencia. Determinados archivos deben
+estar disponibles de forma inmediata y permanente, mientras que otros se conservan
+durante años por motivos normativos y se recuperan en muy raras ocasiones. Para cubrir
+ese espectro, S3 ofrece varias **clases de almacenamiento** que intercambian coste por
+inmediatez de acceso. Las clases se asignan objeto a objeto, de modo que un mismo
+_bucket_ puede contener objetos en clases distintas.
+
+| Clase                             | Caso de uso                                                       | Consideraciones                                                               |
+| :-------------------------------- | :---------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| **S3 Standard**                   | Datos de acceso frecuente y propósito general.                    | Mayor coste de almacenamiento y sin coste de recuperación.                    |
+| **S3 Intelligent-Tiering**        | Datos con patrón de acceso desconocido o cambiante.               | Mueve los objetos entre niveles de forma automática por una cuota de gestión. |
+| **S3 Standard-IA**                | Datos de acceso poco frecuente que deben recuperarse al instante. | Menor coste de almacenamiento y coste por recuperación.                       |
+| **S3 One Zone-IA**                | Datos poco frecuentes y reproducibles, como copias secundarias.   | Reside en una sola zona de disponibilidad, por lo que tolera menos fallos.    |
+| **S3 Glacier Instant Retrieval**  | Archivado con acceso ocasional en milisegundos.                   | Duración mínima de almacenamiento facturable.                                 |
+| **S3 Glacier Flexible Retrieval** | Copias de seguridad consultadas una o dos veces al año.           | La recuperación tarda de minutos a horas según la modalidad elegida.          |
+| **S3 Glacier Deep Archive**       | Conservación a largo plazo por requisitos normativos.             | Coste mínimo y recuperación en el orden de horas.                             |
+
+La asignación no tiene que ser manual ni definitiva. Las **reglas de ciclo de vida**
+permiten trasladar los objetos a clases más económicas a medida que envejecen y
+eliminarlos cuando expira el plazo de conservación, lo que ajusta el coste al valor real
+que la información conserva en cada momento.
+
+### Almacenamiento de archivos
+
+**Amazon EFS** (_Elastic File System_) es un sistema de archivos de red compatible con
+NFS, el protocolo habitual en los sistemas Linux. Su capacidad crece y decrece de forma
+automática según los archivos que se añaden o se eliminan, sin necesidad de aprovisionar
+tamaño alguno. Un mismo sistema de archivos admite el acceso concurrente y de baja
+latencia de múltiples instancias de EC2, contenedores o funciones Lambda, lo que lo
+convierte en la opción natural para compartir código, modelos o resultados entre varios
+nodos de cómputo. EFS es un servicio regional, de modo que el sistema de archivos es
+accesible desde varias zonas de disponibilidad, y sus políticas de ciclo de vida
+trasladan de forma automática los archivos a los que no se accede a una clase de
+almacenamiento más económica.
+
+**Amazon FSx** cubre los casos en los que se requiere un protocolo o un motor de sistema
+de archivos concreto, todos ellos completamente gestionados por AWS. FSx for Windows
+File Server ofrece recursos compartidos SMB integrados con Active Directory. FSx for
+Lustre proporciona el rendimiento agregado que demandan la computación de altas
+prestaciones y el entrenamiento de modelos, con integración directa con los datos
+alojados en S3. FSx for NetApp ONTAP y FSx for OpenZFS reproducen las capacidades de
+esos sistemas de archivos para las cargas que ya dependen de ellos.
+
+### Almacenamiento híbrido y recuperación ante desastres
+
+**AWS Storage Gateway** conecta las instalaciones propias con el almacenamiento de la
+nube, de forma que las aplicaciones locales siguen utilizando sus protocolos habituales
+mientras los datos residen en AWS. Sus usos más frecuentes son las copias de seguridad
+de sistemas _on-premise_ y el archivado de información que se consulta muy raramente.
+
+La variante **Amazon S3 File Gateway** expone una interfaz de archivos, accesible por
+NFS o SMB, cuyo contenido se almacena realmente como objetos en S3. Los archivos
+consultados con más frecuencia se mantienen en una caché local que proporciona baja
+latencia, mientras que el conjunto completo permanece en S3, lo que combina la comodidad
+de un recurso compartido con el coste del almacenamiento de objetos.
+
+**AWS Elastic Disaster Recovery** aborda un problema distinto, el de la continuidad del
+servicio ante una caída completa. El servicio replica de forma continua los servidores
+de origen a nivel de bloque, con lo que mantiene en AWS una réplica exacta y actualizada
+de cada máquina. Al reducirse al mínimo el intervalo entre el último estado replicado y
+el fallo, la recuperación consiste en levantar las instancias correspondientes en
+cuestión de minutos, sin necesidad de restaurar copias de seguridad completas.
+
+### Elección del servicio de almacenamiento
+
+La regla práctica atiende al modo en que la aplicación escribe y lee la información. Las
+cargas que modifican fragmentos de archivos de forma continua, como los archivos de
+datos de una base de datos o el sistema de archivos de una instancia, requieren
+almacenamiento de bloques y, por tanto, volúmenes de EBS. El contenido que se escribe
+una vez y se consulta íntegro, como imágenes, vídeos, registros históricos, copias de
+seguridad o conjuntos de datos de entrenamiento, encaja en S3. Los escenarios en los que
+varias máquinas necesitan compartir un mismo árbol de directorios corresponden a EFS o a
+FSx.
+
+!!! warning "Una base de datos no se aloja en S3"
+
+    Situar los archivos de datos de una base de datos en almacenamiento de objetos es un
+    error de diseño recurrente. Al ser el objeto la unidad indivisible de S3, cada
+    escritura parcial obligaría a reescribirlo por completo, con un coste y una latencia
+    incompatibles con una carga transaccional. Las bases de datos autogestionadas se
+    apoyan en volúmenes de EBS, y las gestionadas delegan por completo esta decisión en
+    el servicio correspondiente.
+
+## Bases de datos
+
+Los sistemas gestores de bases de datos relacionales (_Relational Database Management
+System_, RDBMS) organizan la información en tablas vinculadas entre sí y se consultan
+mediante SQL, el lenguaje que permite filtrar registros y recorrer las relaciones
+existentes entre ellos, tal y como se describe en el capítulo dedicado a
+[SQL](../01_databases/section_1_sql.md). AWS ofrece este modelo y también alternativas
+no relacionales, con distintos grados de delegación de la administración.
+
+La opción con mayor control consiste en instalar el motor en una instancia de EC2. El
+cliente asume entonces la totalidad de las tareas operativas, desde la instalación y la
+aplicación de parches hasta las copias de seguridad, la replicación y la conmutación por
+error. Este enfoque solo se justifica cuando se necesita un motor no soportado o un
+nivel de personalización que los servicios gestionados no permiten.
+
+**Amazon RDS** (_Relational Database Service_) es el servicio gestionado que facilita la
 configuración, operación y escalado de bases de datos relacionales en la nube. RDS
-soporta varios motores de bases de datos, como MySQL, PostgreSQL, MariaDB, Oracle y SQL
-Server, además de **Amazon Aurora**, el motor propio de AWS compatible con MySQL y
-PostgreSQL. Al ser un servicio gestionado, AWS se encarga de las tareas de
-administración rutinarias como la aplicación de parches, las copias de seguridad
-automáticas y la replicación entre zonas de disponibilidad, lo que permite al equipo de
-desarrollo centrarse en el diseño del esquema y la optimización de las consultas.
+soporta varios motores, como MySQL, PostgreSQL, MariaDB, Oracle y SQL Server, y se
+encarga de las tareas rutinarias de administración, entre ellas la aplicación de parches
+y las copias de seguridad automáticas con recuperación a un instante concreto. Los
+despliegues en múltiples zonas de disponibilidad mantienen una réplica en espera que
+asume el servicio de forma automática si la instancia principal falla, mientras que las
+réplicas de lectura permiten distribuir las consultas y aliviar la carga de la instancia
+principal. Bajo el modelo de responsabilidad compartida, AWS opera el motor y la
+infraestructura, y el cliente sigue siendo responsable del diseño del esquema, de la
+optimización de las consultas y del control de accesos.
+
+**Amazon Aurora** es el motor propio de AWS, compatible con MySQL y PostgreSQL, que
+sustituye la capa de almacenamiento tradicional por una arquitectura distribuida y
+replicada entre varias zonas de disponibilidad. Esa arquitectura le permite alcanzar
+hasta cinco veces el rendimiento de una instalación estándar de MySQL y hasta tres veces
+el de PostgreSQL, además de admitir hasta quince réplicas de lectura y de aumentar la
+capacidad de almacenamiento de forma automática a medida que los datos crecen.
+
+**Amazon DynamoDB** es un servicio de base de datos NoSQL completamente gestionado,
+orientado a pares de clave y valor y a documentos. Cada elemento almacena sus propios
+atributos sin ajustarse a un esquema fijo, lo que aporta flexibilidad frente a modelos
+de datos heterogéneos o cambiantes. DynamoDB mantiene latencias de pocos milisegundos
+con independencia del volumen almacenado y ofrece dos modelos de capacidad, uno bajo
+demanda, que se adapta al tráfico sin configuración previa, y otro aprovisionado con
+escalado automático, más económico cuando la carga es predecible.
+
+**Amazon ElastiCache** proporciona una caché en memoria gestionada, compatible con
+Valkey, Redis OSS y Memcached, que se sitúa delante de la base de datos. Las consultas
+repetidas se atienden desde memoria en tiempos inferiores al milisegundo, con lo que se
+reduce el número de peticiones que llegan al motor. El efecto es doble, ya que mejora el
+tiempo de respuesta percibido por la aplicación y aumenta el rendimiento agregado del
+sistema, y además permite dimensionar la base de datos con instancias más económicas.
+También está disponible en modalidad _serverless_, en la que la capacidad se ajusta de
+forma automática al uso.
+
+Además de los anteriores, AWS ofrece motores especializados en modelos de datos
+concretos. **Amazon DocumentDB** es una base de datos documental compatible con MongoDB,
+lo que facilita la migración de aplicaciones que ya utilizan ese modelo. **Amazon
+Neptune** es una base de datos de grafos, diseñada para resolver con baja latencia
+consultas sobre datos densamente conectados, como redes de relaciones, sistemas de
+recomendación, detección de fraude o grafos de conocimiento.
+
+Dos servicios transversales completan el conjunto. **AWS DMS** (_Database Migration
+Service_) migra bases de datos hacia AWS manteniendo el origen en funcionamiento durante
+el proceso, tanto entre motores idénticos como entre motores distintos. **AWS Backup**
+centraliza las copias de seguridad de varios servicios, entre ellos EBS, RDS, DynamoDB,
+EFS y S3, bajo políticas comunes de retención y de copia entre regiones, lo que
+sustituye los enfoques fragmentados en los que cada servicio se respalda por separado y
+con reglas propias.
+
+## Datos, analítica e inteligencia artificial
+
+Los servicios anteriores almacenan y sirven datos operativos. Explotarlos con fines
+analíticos requiere un recorrido adicional que va desde la ingesta hasta la
+visualización, y que en AWS se cubre encadenando servicios especializados en cada etapa.
+
+### Almacenamiento analítico
+
+La distinción entre _data lake_ y _data warehouse_ introducida en el capítulo de
+[fundamentos](section_1_fundamentals.md) tiene una traducción directa en el catálogo de
+AWS. El _data lake_ es el depósito de datos en crudo, sin una estructura impuesta de
+antemano, y su implementación habitual es un _bucket_ de S3. El _data warehouse_
+contiene datos ya organizados y modelados para responder a las preguntas del negocio, y
+se materializa en **Amazon Redshift**, un almacén de datos orientado a columnas y
+optimizado para consultas analíticas sobre grandes volúmenes de información.
+
+### Ingesta de datos
+
+**Amazon Kinesis Data Streams** captura flujos de datos en tiempo real con baja latencia
+y conserva los registros durante una ventana configurable, de modo que varios
+consumidores independientes pueden leer el mismo flujo y procesarlo con lógicas
+distintas. Resulta adecuado cuando la aplicación debe reaccionar a los eventos en el
+momento en que se producen.
+
+**Amazon Data Firehose** cubre el caso contrario, la entrega casi en tiempo real hacia
+un destino de almacenamiento. El servicio acumula los registros en lotes y los deposita
+en destinos como S3, Redshift u OpenSearch, con la posibilidad de transformarlos,
+comprimirlos y cifrarlos antes de la carga. Al no requerir administración de
+infraestructura, es la vía habitual para alimentar un _data lake_ de forma continua.
+
+### Procesamiento de datos
+
+**AWS Glue** es un servicio de extracción, transformación y carga sin servidores. Su
+componente **Glue Data Catalog** almacena los metadatos de los conjuntos de datos
+disponibles, y los rastreadores (_crawlers_) recorren los orígenes para inferir sus
+esquemas y catalogarlos de forma automática, lo que permite que otros servicios los
+descubran y los consulten sin definiciones manuales.
+
+**Amazon EMR** (_Elastic MapReduce_) aprovisiona y gestiona clústeres para ejecutar
+_frameworks_ de procesamiento distribuido como Apache Spark, Hive o Hadoop. Es la opción
+indicada para transformaciones complejas sobre grandes volúmenes de datos que no encajan
+en un flujo de ETL declarativo.
+
+### Análisis y monitorización
+
+**Amazon Athena** permite consultar con SQL los datos que residen en S3 sin aprovisionar
+ninguna infraestructura y facturando en función del volumen de datos examinado. Se apoya
+en el catálogo de Glue para conocer los esquemas, lo que hace posible analizar la
+información donde se encuentra, sin cargarla previamente en un almacén de datos.
+
+**Amazon QuickSight** es el servicio de inteligencia de negocio (_business
+intelligence_) que construye cuadros de mando y visualizaciones interactivas a partir de
+esos datos. **Amazon OpenSearch Service** cubre la indexación y la búsqueda de texto
+completo, así como la monitorización en tiempo real de registros y métricas.
+
+### Inteligencia artificial y aprendizaje automático
+
+**Amazon SageMaker AI** es la plataforma gestionada para construir, entrenar y desplegar
+modelos de aprendizaje automático. Cubre el ciclo completo, desde los entornos de
+desarrollo y la preparación de los datos hasta los trabajos de entrenamiento, el ajuste
+de hiperparámetros y la publicación del modelo en un punto de inferencia gestionado.
+
+Cuando no se parte de cero, **SageMaker JumpStart** ofrece un catálogo de modelos
+preentrenados y de modelos fundacionales que sirven como punto de partida para
+adaptarlos después a un caso de uso concreto. **Amazon Bedrock** lleva esa idea un paso
+más allá al proporcionar acceso mediante API a modelos fundacionales de varios
+proveedores, con soporte multimodal y mecanismos de personalización, sin que el cliente
+gestione en ningún momento la infraestructura que los ejecuta.
+
+En el nivel de infraestructura, las instancias de computación acelerada descritas en la
+sección de cómputo aportan la capacidad de cálculo necesaria para el entrenamiento,
+junto con los aceleradores diseñados por AWS, Trainium para entrenar modelos e
+Inferentia para servirlos en producción.
 
 ## Infraestructura como código
 

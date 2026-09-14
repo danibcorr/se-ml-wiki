@@ -1048,6 +1048,87 @@ un argumento, este reemplaza el valor predeterminado.
     operar()
     ```
 
+### Valores centinela
+
+Los valores predeterminados obligan a distinguir entre un argumento que se ha omitido y
+un argumento que se ha proporcionado de forma explícita. Cuando el valor predeterminado
+es `None`, esa distinción desaparece en cuanto `None` pasa a ser un valor legítimo del
+dominio de la función. El mismo problema aparece con marcadores como `-1`, `0` o la
+cadena vacía, que se emplean con frecuencia para señalar la ausencia de dato y que
+pueden colisionar con datos reales.
+
+Un **valor centinela** (_sentinel value_) resuelve esa ambigüedad mediante un objeto
+único cuya única finalidad es representar la ausencia de valor. El patrón habitual
+consiste en crear ese objeto con `object()` y compararlo por identidad:
+
+```python linenums="1"
+from typing import Any
+
+# Objeto único que representa la ausencia de argumento
+_AUSENTE = object()
+
+def inspeccionar_tipo(obj: Any = _AUSENTE) -> None:
+    """
+    Muestra el tipo del objeto recibido.
+
+    Args:
+        obj: Objeto cuyo tipo se desea inspeccionar. Si se omite, la
+            función informa de que no se ha recibido ningún valor.
+    """
+
+    if obj is _AUSENTE:
+        print("No se ha proporcionado ningún valor")
+    else:
+        print(type(obj))
+
+# Imprime
+# No se ha proporcionado ningún valor
+inspeccionar_tipo()
+
+# Imprime
+# <class 'NoneType'>, porque None es un valor recibido y no el centinela
+inspeccionar_tipo(None)
+```
+
+La llamada `object()` construye la instancia más simple de la jerarquía de tipos de
+Python. La clase `object` es la base de la que heredan todas las demás y sus instancias
+directas no admiten atributos ni métodos nuevos, ya que carecen de `__dict__`. Esa
+combinación de unicidad y rigidez es lo que convierte al objeto en un centinela fiable,
+puesto que ninguna otra referencia del programa puede ser idéntica a él.
+
+La comparación debe realizarse con el operador `is` y no con `==`. El operador de
+igualdad puede estar redefinido en el tipo del argumento recibido, de modo que un objeto
+ajeno podría declararse igual al centinela y provocar que la función interprete como
+ausente un valor que sí se ha proporcionado. El guion bajo inicial del nombre `_AUSENTE`
+indica además que el centinela es un detalle interno del módulo y no forma parte de su
+interfaz pública.
+
+La limitación de este patrón está en el sistema de tipos, ya que el centinela no aporta
+ningún tipo propio y la firma queda anotada como `Any`. La
+[PEP 661](https://peps.python.org/pep-0661/) propone estandarizar el mecanismo mediante
+una función `sentinel()` que devuelve un centinela con nombre y que los verificadores de
+tipos reconocen, lo que permitiría escribir la firma de la siguiente forma:
+
+```python linenums="1"
+AUSENTE = sentinel("AUSENTE")
+
+def actualizar_umbral(valor: int | AUSENTE = AUSENTE) -> None:
+    """
+    Actualiza el umbral de la configuración.
+
+    Args:
+        valor: Nuevo umbral. Si se omite, la configuración no se modifica.
+    """
+
+    if valor is AUSENTE:
+        return
+
+    print(f"Umbral actualizado a {valor}")
+```
+
+Esta propuesta continúa en discusión y no forma parte todavía de la biblioteca estándar,
+por lo que el patrón basado en `object()` sigue siendo la solución recomendada.
+
 ### Argumentos arbitrarios (`*args` y `**kwargs`)
 
 En Python, las construcciones `*args` y `**kwargs` se emplean en la definición de
@@ -2050,6 +2131,71 @@ print(c)
 # Imprime: Turismo
 print(c.tipo())
 ```
+
+### Atributos de solo lectura
+
+El parámetro `frozen=True` de una _dataclass_ protege la instancia completa, pero en
+muchos diseños solo interesa proteger algunos atributos concretos, como un identificador
+asignado en la creación del objeto, mientras el resto del estado sigue evolucionando.
+Python ofrece hoy tres mecanismos para expresar esa intención, cada uno con un alcance
+distinto.
+
+La anotación `Final` del módulo `typing` declara que un atributo no debe reasignarse
+después de su primera asignación. La comprobación la realizan los verificadores de tipos
+de forma estática, ya que en tiempo de ejecución no existe ninguna restricción efectiva.
+La propiedad definida con `@property` y sin método asociado a `@nombre.setter` sí impide
+la reasignación en tiempo de ejecución, a costa de introducir un atributo interno
+adicional y el método que lo expone. El parámetro `frozen=True`, por último, congela
+todos los atributos de la _dataclass_ a la vez.
+
+```python linenums="1"
+from typing import Final
+
+class Sensor:
+    """
+    Representa un sensor cuyo identificador no cambia tras la creación.
+    """
+
+    def __init__(self, identificador: str, lectura: float) -> None:
+        """
+        Inicializa el sensor con su identificador y su primera lectura.
+
+        Args:
+            identificador: Código que identifica al sensor de forma única.
+            lectura: Valor medido en el momento de la creación.
+        """
+
+        self.identificador: Final[str] = identificador
+        self._lectura: float = lectura
+
+    @property
+    def lectura(self) -> float:
+        """
+        Expone la última lectura registrada.
+
+        Returns:
+            El valor de la última lectura registrada por el sensor.
+        """
+
+        return self._lectura
+
+s = Sensor("s-01", 21.5)
+
+# Imprime: 21.5
+print(s.lectura)
+
+# La siguiente línea lanzaría AttributeError, ya que la propiedad no tiene setter
+# s.lectura = 22.0
+```
+
+Ninguno de los tres mecanismos permite declarar un atributo que la propia clase pueda
+modificar y que el código externo solo pueda consultar sin recurrir a una propiedad. La
+[PEP 767](https://peps.python.org/pep-0767/) propone cubrir ese hueco con la anotación
+`ReadOnly`, aplicable a los atributos de cualquier clase y también a los declarados en
+un protocolo, donde sirve para exigir que la implementación exponga el atributo sin
+autorizar su modificación. La propuesta se plantea como alternativa más granular a
+`Final` y a las _dataclasses_ inmutables, aunque continúa en discusión y todavía no está
+disponible en la biblioteca estándar.
 
 ## Módulos de la biblioteca estándar
 
