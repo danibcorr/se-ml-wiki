@@ -21,12 +21,6 @@ excepciones, el trabajo con archivos y directorios, y las expresiones regulares.
   <https://docs.python.org/3/>
 - van Rossum, G., Warsaw, B. y Coghlan, N. (2001). _PEP 8: Style Guide for Python Code_.
   <https://peps.python.org/pep-0008/>
-- Python Software Foundation. (s.f.). _The Python Tutorial_.
-  <https://docs.python.org/3/tutorial/>
-- Python Software Foundation. (s.f.). _The Python Language Reference: Data model_.
-  <https://docs.python.org/3/reference/datamodel.html>
-- Python Software Foundation. (s.f.). _re — Regular expression operations_.
-  <https://docs.python.org/3/library/re.html>
 - van Rossum, G., Lehtosalo, J. y Langa, Ł. (2014). _PEP 484: Type Hints_.
   <https://peps.python.org/pep-0484/>
 - Portilla, J. (s.f.). _Complete Python Bootcamp_ \[Curso\]. Udemy.

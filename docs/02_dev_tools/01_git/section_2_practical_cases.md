@@ -12,8 +12,6 @@ repositorio.
 
 ## Bibliografía
 
-- Git. (s.f.). _Customizing Git - Git Hooks_.
-  <https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks>
 - Git Hooks. (s.f.). _Git Hooks_. <https://githooks.com/>
 - pre-commit. (s.f.). _A framework for managing and maintaining multi-language
   pre-commit hooks_. <https://pre-commit.com/>

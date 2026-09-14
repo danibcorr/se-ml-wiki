@@ -14,10 +14,6 @@ resultantes. Presupone los conceptos de arquitectura descritos en el capítulo d
 
 ## Bibliografía
 
-- NVIDIA. (s.f.). _CUDA C++ Programming Guide_.
-  <https://docs.nvidia.com/cuda/cuda-c-programming-guide/>
-- NVIDIA. (s.f.). _CUDA C++ Best Practices Guide_.
-  <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/>
 - NVIDIA y Universidad de Málaga. (s.f.). _Deep Learning Institute - UMA_.
   <http://nvidiadli.uma.es/index.php/es/certificaciones-nvidia>
 

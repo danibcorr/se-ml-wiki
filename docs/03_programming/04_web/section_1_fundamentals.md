@@ -19,13 +19,8 @@ implementación mediante el _framework_ Bootstrap.
 ## Bibliografía
 
 - Mozilla. (s.f.). _MDN Web Docs_. <https://developer.mozilla.org/es/>
-- WHATWG. (s.f.). _HTML Living Standard_. <https://html.spec.whatwg.org/>
-- Fielding, R. y Reschke, J. (2022). _RFC 9110: HTTP Semantics_. IETF.
-  <https://www.rfc-editor.org/rfc/rfc9110.html>
-- Bootstrap. (s.f.). _Bootstrap Documentation_.
-  <https://getbootstrap.com/docs/5.3/getting-started/introduction/>
-- World Wide Web Consortium. (s.f.). _WAI-ARIA Overview_. Web Accessibility Initiative.
-  <https://www.w3.org/WAI/standards-guidelines/aria/>
+- Meta. (s.f.). _Introduction to Front-End Development_ \[Curso\]. Coursera.
+  <https://www.coursera.org/learn/introduction-to-front-end-development>
 
 ## Introducción
 

@@ -18,8 +18,6 @@ que se dan por conocidos se desarrollan en los capítulos de
 ## Bibliografía
 
 - Numba. (s.f.). _Numba Documentation_. <https://numba.pydata.org/>
-- Numba. (s.f.). _Numba for CUDA GPUs_.
-  <https://numba.readthedocs.io/en/stable/cuda/index.html>
 - CuPy. (s.f.). _CuPy: NumPy & SciPy for GPU_. <https://cupy.dev/>
 - NVIDIA y Universidad de Málaga. (s.f.). _Deep Learning Institute - UMA_.
   <http://nvidiadli.uma.es/index.php/es/certificaciones-nvidia>

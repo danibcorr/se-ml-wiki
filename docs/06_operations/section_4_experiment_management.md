@@ -21,8 +21,8 @@ MLflow como herramientas de referencia.
 
 - DVC. (s.f.). _Data Version Control Documentation_. <https://dvc.org/doc>
 - MLflow. (s.f.). _MLflow Documentation_. <https://mlflow.org/docs/latest/index.html>
-- Atwal, H. (s.f.). _ML in Production: From Data Scientist to ML Engineer_ \[Curso\].
-  Udemy. <https://www.udemy.com/course/ml-in-production/>
+- Wolf, A. y Fursov, I. (s.f.). _ML in Production: From Data Scientist to ML Engineer_
+  \[Curso\]. Udemy. <https://www.udemy.com/course/ml-in-production/>
 
 ## Introducción
 

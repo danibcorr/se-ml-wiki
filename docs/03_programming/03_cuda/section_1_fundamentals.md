@@ -13,9 +13,6 @@ numérica tiene sobre el rendimiento.
 
 ## Bibliografía
 
-- NVIDIA. (s.f.). _CUDA Toolkit Documentation_. <https://docs.nvidia.com/cuda/>
-- NVIDIA. (2017). _NVIDIA Tesla V100 GPU Architecture_ \[Informe técnico\].
-  <https://images.nvidia.com/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf>
 - NVIDIA y Universidad de Málaga. (s.f.). _Deep Learning Institute - UMA_.
   <http://nvidiadli.uma.es/index.php/es/certificaciones-nvidia>
 

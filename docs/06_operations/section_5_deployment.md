@@ -24,8 +24,8 @@ entornos de hardware.
 - ONNX Runtime. (s.f.). _ONNX Runtime_. <https://onnxruntime.ai/>
 - Deeplizard. (2022). _Everything You Want to Know About ONNX_ \[Vídeo\]. YouTube.
   <https://www.youtube.com/watch?v=cK5AyawZSUI>
-- Atwal, H. (s.f.). _ML in Production: From Data Scientist to ML Engineer_ \[Curso\].
-  Udemy. <https://www.udemy.com/course/ml-in-production/>
+- Wolf, A. y Fursov, I. (s.f.). _ML in Production: From Data Scientist to ML Engineer_
+  \[Curso\]. Udemy. <https://www.udemy.com/course/ml-in-production/>
 
 ## APIs de inferencia
 

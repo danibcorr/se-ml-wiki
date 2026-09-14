@@ -12,7 +12,6 @@ gestionar un repositorio y las estrategias de ramificación más extendidas.
 
 ## Bibliografía
 
-- Git. (s.f.). _Git - Distributed Version Control System_. <https://git-scm.com/>
 - Umali, A. (2024). _Learning Git: A Hands-On and Visual Guide to the Basics of Git_.
   O'Reilly Media. <https://www.oreilly.com/library/view/learning-git/9781098133900/>
 - Wilsenach, R. (2021). _Ship / Show / Ask: A modern branching strategy_. Martin Fowler.

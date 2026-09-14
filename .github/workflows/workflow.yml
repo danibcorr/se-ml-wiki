@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, dev]
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   build-deploy-docs:
     name: Build and Deploy Documentation

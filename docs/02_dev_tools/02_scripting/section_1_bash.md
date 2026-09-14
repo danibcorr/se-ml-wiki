@@ -12,10 +12,6 @@ habituales de automatización de tareas.
 
 ## Bibliografía
 
-- GNU Project. (s.f.). _Bash Reference Manual_.
-  <https://www.gnu.org/software/bash/manual/bash.html>
-- The Open Group. (2018). _Shell Command Language_.
-  <https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html>
 - Pelado Nerd. (2021). _TODOS deberían aprender BASH - Bash PARTE 1_ \[Vídeo\]. YouTube.
   <https://www.youtube.com/watch?v=4_ub6614dwY>
 

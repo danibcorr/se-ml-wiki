@@ -13,8 +13,8 @@ buenas prácticas de organización de un proyecto.
 ## Bibliografía
 
 - Chase, C. (s.f.). _Makefile Tutorial_. <https://makefiletutorial.com/>
-- GNU Project. (s.f.). _GNU Make Manual_.
-  <https://www.gnu.org/software/make/manual/make.html>
+- Wolf, A. y Fursov, I. (s.f.). _ML in Production: From Data Scientist to ML Engineer_
+  \[Curso\]. Udemy. <https://www.udemy.com/course/ml-in-production/>
 
 ## Introducción
 

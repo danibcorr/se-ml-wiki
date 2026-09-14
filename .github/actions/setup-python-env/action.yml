@@ -21,7 +21,7 @@ runs:
     - name: Install uv and set the Python version
       uses: astral-sh/setup-uv@v7
       with:
-        version: "0.11.30"
+        version: "0.12.13"
         python-version: ${{ inputs.src-python-version }}
         enable-cache: true
 
@@ -36,10 +36,3 @@ runs:
           [ -n "${{ inputs.uv-extra }}" ] && ARGS="$ARGS --extra ${{ inputs.uv-extra }}"
         fi
         uv sync $ARGS
-
-    - name: Verify uv and environment
-      shell: bash
-      run: |
-        uv --version
-        uv venv list
-        uv run python --version
