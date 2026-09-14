@@ -13,7 +13,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development",
-    "License :: OSI Approved :: MIT License",
 ]
 keywords = ["machine learning", "data science", "software", "wiki"]
 dependencies = [
