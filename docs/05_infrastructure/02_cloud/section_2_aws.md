@@ -2,8 +2,8 @@
 authors: Daniel Bazo Correa
 description:
     Conceptos fundamentales de Amazon Web Services, desde la infraestructura global
-    hasta los principales servicios de cómputo, almacenamiento, redes, bases de datos y
-    analítica.
+    hasta los servicios de cómputo, almacenamiento, redes, bases de datos, analítica,
+    seguridad, gobernanza y gestión de costes.
 title: Amazon Web Services (AWS)
 ---
 
@@ -16,7 +16,8 @@ title: Amazon Web Services (AWS)
 
 Este capítulo recorre los servicios principales de Amazon Web Services, desde la
 infraestructura global y la gestión de identidades hasta los servicios de cómputo,
-almacenamiento, bases de datos, analítica y despliegue.
+almacenamiento, bases de datos, analítica y despliegue, y cierra con la seguridad, la
+gobernanza del entorno y el control del gasto.
 
 ## Bibliografía
 
@@ -115,6 +116,12 @@ aquello que el cliente puede ver y configurar desde su cuenta de AWS recae bajo 
 
 ## Gestión de identidades y accesos
 
+El control de acceso combina dos operaciones que conviene no confundir. La
+**autenticación** verifica la identidad de quien emite una petición, es decir, comprueba
+que quien afirma ser un usuario determinado lo es realmente. La **autorización** decide,
+una vez verificada la identidad, qué acciones puede ejecutar esa identidad y sobre qué
+recursos.
+
 **AWS Identity and Access Management** (_IAM_) es el servicio que permite controlar de
 forma granular quién puede acceder a los recursos de AWS y qué acciones puede realizar
 sobre ellos.
@@ -124,14 +131,20 @@ permisos ilimitados sobre todos los recursos. Debido a su nivel de privilegio, s
 recomienda encarecidamente no utilizar la cuenta _root_ para las operaciones diarias. En
 su lugar, conviene crear usuarios de IAM individuales con los permisos estrictamente
 necesarios para cada tarea, siguiendo el **principio de mínimo privilegio** (_least
-privilege_).
+privilege_). Sobre la cuenta _root_, y preferiblemente sobre todas las identidades con
+privilegios elevados, debe activarse además la **autenticación multifactor**
+(_multi-factor authentication_, MFA), que exige un segundo factor de verificación además
+de la contraseña y que impide el acceso incluso si las credenciales quedan expuestas.
 
 Los permisos en IAM se definen mediante **políticas** (_policies_), documentos en
 formato JSON que especifican qué acciones están permitidas o denegadas sobre qué
-recursos y bajo qué condiciones. Estas políticas pueden asociarse a usuarios
-individuales, aunque la práctica recomendada consiste en agrupar a los usuarios en
-**grupos** de IAM y asignar las políticas al grupo, de modo que todos sus miembros
-hereden los mismos permisos.
+recursos y bajo qué condiciones. Un usuario de IAM recién creado no puede realizar
+ninguna operación, ya que IAM aplica una **denegación implícita** a toda acción que no
+se haya autorizado de forma expresa. Los permisos se conceden por tanto de forma
+incremental, añadiendo únicamente lo que cada tarea requiere. Estas políticas pueden
+asociarse a usuarios individuales, aunque la práctica recomendada consiste en agrupar a
+los usuarios en **grupos** de IAM y asignar las políticas al grupo, de modo que todos
+sus miembros hereden los mismos permisos.
 
 Los **roles** de IAM representan otro mecanismo fundamental. Un rol es una identidad con
 permisos específicos que puede ser asumida temporalmente por un usuario, una aplicación
@@ -260,6 +273,104 @@ destino.
 | Estado              | _Stateful_       | _Stateless_             |
 | Reglas              | Solo de permiso  | De permiso y denegación |
 | Evaluación          | Todas las reglas | En orden numérico       |
+
+## Seguridad
+
+La gestión de identidades y el control del tráfico de red cubren quién accede y por
+dónde lo hace. Queda un tercer frente, el de proteger la información almacenada y en
+tránsito y detectar los comportamientos anómalos que consigan sortear las barreras
+anteriores. Bajo el modelo de responsabilidad compartida, la protección de los datos
+sensibles alojados en servicios como Amazon S3 o Amazon RDS recae en el cliente, de modo
+que las herramientas que siguen son el instrumento con el que asumir esa
+responsabilidad.
+
+### Cifrado de datos
+
+El cifrado en reposo protege la información almacenada frente al acceso directo al medio
+físico o a un recurso mal configurado. Los _buckets_ de S3 creados actualmente aplican
+cifrado de forma predeterminada, de manera que los objetos que se suben quedan cifrados
+sin necesidad de configuración adicional. Los volúmenes de Amazon EBS admiten igualmente
+cifrado, que puede establecerse como comportamiento por omisión de la cuenta para evitar
+que un volumen nuevo quede desprotegido por descuido.
+
+**AWS KMS** (_Key Management Service_) es el servicio que crea y administra las claves
+criptográficas empleadas en esas operaciones. KMS centraliza la generación, la rotación
+y el control de uso de las claves, y se integra con el resto de servicios de AWS, que
+delegan en él el cifrado y el descifrado. Como el acceso a cada clave se gobierna
+mediante políticas, es posible separar a quien puede leer un dato cifrado de quien puede
+utilizar la clave que lo descifra.
+
+El cifrado en tránsito protege la información mientras viaja entre el usuario y la
+aplicación, y se implementa mediante certificados SSL/TLS. **AWS Certificate Manager**
+(ACM) centraliza la gestión de esos certificados, incluyendo su emisión, su despliegue
+en servicios como CloudFront o los balanceadores de carga, y su renovación automática,
+lo que elimina una de las causas habituales de caída de un servicio web, la expiración
+inadvertida de un certificado.
+
+### Gestión de secretos
+
+Las credenciales de una base de datos, las claves de API de servicios de terceros o los
+_tokens_ de acceso no deben residir en el código ni en archivos de configuración
+versionados. **AWS Secrets Manager** almacena estos secretos de forma cifrada y los
+expone a la aplicación mediante una llamada a su API, de modo que el valor nunca se
+escribe en el repositorio. El servicio permite además rotar los secretos de forma
+automática y periódica, con lo que una credencial filtrada deja de ser válida al poco
+tiempo sin necesidad de intervención manual.
+
+### Protección frente a ataques
+
+Los grupos de seguridad descritos anteriormente restringen el tráfico admitido por cada
+instancia, pero no distinguen una petición legítima de otra malintencionada que utilice
+los mismos puertos. Esa distinción corresponde a dos servicios específicos.
+
+**AWS Shield** protege frente a ataques de denegación de servicio distribuido
+(_Distributed Denial of Service_, DDoS), que buscan agotar los recursos del servicio
+saturándolo con tráfico. Su nivel básico se aplica de forma automática y sin coste a
+todas las cuentas, mientras que el nivel avanzado añade detección para ataques de mayor
+sofisticación, protección frente a los costes derivados del escalado durante un ataque y
+acceso a un equipo especializado de respuesta.
+
+**AWS WAF** (_Web Application Firewall_) actúa en la capa de aplicación, donde
+inspecciona el contenido de las peticiones HTTP y HTTPS y bloquea las que coinciden con
+patrones de ataque conocidos, como la inyección de SQL o la ejecución de _scripts_ entre
+sitios. Se asocia a los puntos de entrada del tráfico, entre ellos CloudFront, los
+balanceadores de carga de aplicación y API Gateway, y admite reglas propias basadas en
+direcciones de origen, cabeceras o límites de frecuencia de peticiones.
+
+### Detección de amenazas e investigación
+
+Ninguna configuración preventiva es perfecta, por lo que resulta necesario supervisar de
+forma continua el entorno y disponer de un procedimiento para investigar lo que la
+supervisión detecte. AWS cubre ese ciclo con cuatro servicios complementarios.
+
+**Amazon Inspector** evalúa de forma automatizada la seguridad de las cargas de trabajo,
+analizando las instancias de EC2, las imágenes de contenedor y las funciones Lambda en
+busca de vulnerabilidades conocidas y de desviaciones respecto a las buenas prácticas,
+como el acceso abierto a una instancia o la presencia de versiones de _software_
+afectadas por un fallo publicado. Los hallazgos se presentan ordenados por gravedad,
+cada uno con una descripción detallada y una recomendación concreta de corrección, y son
+accesibles tanto desde la consola como a través de su API.
+
+**Amazon GuardDuty** aporta detección inteligente de amenazas sobre la infraestructura
+completa. Analiza de forma continua los flujos de metadatos de la cuenta y la actividad
+de red del entorno, y combina listas de direcciones IP reconocidas como maliciosas con
+detección de anomalías y aprendizaje automático para elevar la precisión de las
+detecciones. Sus hallazgos incluyen los pasos de corrección recomendados, y su
+publicación como evento permite encadenar una función Lambda a través de EventBridge
+para aplicar la respuesta de forma automática.
+
+**Amazon Detective** entra en juego cuando una amenaza ya se ha detectado y es necesario
+determinar su causa raíz. El servicio agrega la información dispersa en varias fuentes y
+la presenta como visualizaciones interactivas en una vista unificada, con las
+interacciones entre recursos y usuarios situadas sobre una línea temporal configurable,
+lo que permite reconstruir la secuencia de acontecimientos que condujo al incidente.
+
+**AWS Security Hub** unifica todo lo anterior en un único lugar y formato. El servicio
+agrega automáticamente los hallazgos de los servicios de seguridad de AWS y de
+soluciones de terceros, los normaliza y los organiza en agrupaciones accionables
+denominadas _insights_, lo que ofrece una visión conjunta del estado de seguridad y de
+cumplimiento. La posibilidad de asociar acciones de corrección automática a esos
+hallazgos reduce el tiempo hasta la resolución (_time to resolution_, TTR).
 
 ## Servicios de cómputo
 
@@ -477,20 +588,40 @@ constituye el patrón básico para construir arquitecturas tolerantes a fallos e
 
 ## Monitorización
 
+Monitorizar una infraestructura consiste en observar el estado de sus recursos para
+tomar decisiones fundamentadas sobre ella. De esa observación dependen el
+dimensionamiento de la capacidad, la detección temprana de errores y su notificación al
+equipo responsable, el mantenimiento de la seguridad, el control del gasto y la mejora
+del rendimiento. Sin monitorización, la operación se vuelve reactiva y cada incidente se
+descubre por sus consecuencias en lugar de por sus síntomas.
+
 **Amazon CloudWatch** es el servicio de monitorización y observabilidad de AWS que
 permite recopilar, visualizar y analizar métricas, registros (_logs_) y eventos de
 prácticamente cualquier recurso de la plataforma. CloudWatch proporciona información en
 tiempo real sobre el rendimiento de las instancias de EC2, el estado de los
 balanceadores de carga, la utilización de las bases de datos y cualquier otra métrica
-relevante para la operación de la infraestructura.
+relevante para la operación de la infraestructura. Además de las métricas que los
+servicios publican por sí mismos, la aplicación puede enviar **métricas personalizadas**
+que reflejen indicadores propios del negocio.
 
 A partir de las métricas recopiladas, es posible configurar alarmas que se activan
 cuando un indicador supera o desciende por debajo de un umbral definido. Estas alarmas
 pueden desencadenar acciones automáticas, como el escalado de instancias a través de EC2
-Auto Scaling o el envío de notificaciones al equipo de operaciones. CloudWatch resulta,
-por tanto, un componente esencial para la toma de decisiones informadas sobre el
-dimensionamiento de los recursos y la detección temprana de problemas de rendimiento o
-disponibilidad.
+Auto Scaling o el envío de notificaciones al equipo de operaciones. Los cuadros de mando
+(_dashboards_) reúnen en una sola vista las métricas de servicios distintos, y la
+centralización de los registros de todas las instancias en un mismo lugar evita tener
+que acceder a cada máquina para diagnosticar un problema. El efecto combinado es una
+reducción del tiempo medio de resolución (_mean time to resolution_, MTTR) y una mejora
+del coste total de propiedad (_total cost of ownership_, TCO) de la plataforma.
+
+Mientras CloudWatch responde a la pregunta de cómo se comportan los recursos, **AWS
+CloudTrail** responde a la de quién hizo qué. Toda operación en AWS se traduce en una
+llamada a una API, y CloudTrail registra cada una de esas llamadas junto con la
+identidad que la originó, la fecha y la hora, los parámetros empleados y la dirección de
+origen. Los registros pueden entregarse a un _bucket_ de S3 y conservarse de forma
+indefinida, lo que proporciona la traza histórica necesaria para auditar la actividad de
+la cuenta, demostrar el cumplimiento normativo e identificar el origen de un problema de
+seguridad o de un cambio de configuración inesperado.
 
 ## Mensajería y desacoplamiento
 
@@ -861,3 +992,176 @@ operativos que se utilizan en la nube pública. Outposts se integra de forma tra
 con la región de AWS más cercana, lo que permite construir arquitecturas híbridas
 coherentes en las que los datos y las cargas de trabajo fluyen entre el entorno local y
 la nube según las necesidades del negocio.
+
+## Gobernanza y cumplimiento normativo
+
+Los servicios descritos hasta ahora construyen y operan la arquitectura. Sostenerla en
+el tiempo exige además decidir quién puede desplegar qué, demostrar ante terceros que la
+infraestructura cumple la normativa aplicable y comprobar que la configuración real no
+se desvía de la deseada. La **gobernanza** es precisamente el marco de políticas,
+procesos y estructuras con el que una organización alinea el uso de la tecnología con
+sus objetivos y verifica su cumplimiento.
+
+### Residencia de los datos
+
+AWS no replica los datos entre regiones de forma automática. Cualquier copia hacia otra
+región es siempre una decisión explícita del cliente, y esa garantía es la que hace
+posible cumplir las normativas de residencia de la información, como el Reglamento
+General de Protección de Datos (RGPD) europeo, que condiciona la transferencia de datos
+personales fuera de determinadas jurisdicciones. La elección de la región, planteada al
+principio del capítulo como una decisión de latencia y de coste, es por tanto también
+una decisión de cumplimiento normativo.
+
+### Evaluación de la configuración
+
+**AWS Config** registra la configuración de los recursos y su evolución a lo largo del
+tiempo, y la evalúa frente a las reglas que la organización decide imponer. Cuando un
+recurso deja de satisfacer una regla, el servicio lo señala como no conforme, lo que
+permite auditar el entorno de forma continua y generar informes de cumplimiento en lugar
+de depender de revisiones manuales periódicas. Es la herramienta indicada cuando el
+objetivo consiste en verificar que los recursos desplegados por los distintos equipos
+respetan las políticas internas.
+
+**AWS Audit Manager** cubre la fase siguiente, la de demostrarlo. El servicio automatiza
+la recopilación de las evidencias que acreditan el cumplimiento de un estándar y las
+organiza según los marcos de referencia habituales, con lo que sustituye la tarea manual
+de reunir registros, capturas e informes cada vez que se afronta una auditoría.
+
+**AWS Artifact** es el repositorio de documentación de cumplimiento de AWS. Su sección
+de informes reúne los informes de seguridad y cumplimiento de AWS y de proveedores
+terceros, útiles para evaluar la postura de seguridad de los servicios en los que se
+apoya la propia arquitectura, mientras que su sección de acuerdos permite revisar,
+aceptar y gestionar los acuerdos legales suscritos con AWS.
+
+### Gestión de múltiples cuentas
+
+**AWS Organizations** es el servicio de gestión de cuentas que consolida varias cuentas
+de AWS en una única organización, con facturación agregada y administración
+centralizada. Las cuentas se agrupan en **unidades organizativas** (_organizational
+unit_, OU), agrupaciones lógicas que pueden contener cuentas u otras unidades, lo que
+permite reproducir la estructura de la empresa o la separación entre entornos de
+desarrollo y producción.
+
+Sobre esa jerarquía se aplican las **políticas de control de servicios** (_service
+control policy_, SCP), que establecen el permiso máximo disponible y pueden asociarse
+tanto a una unidad organizativa como a una cuenta concreta. Una SCP no concede permisos
+por sí misma, sino que fija el techo de lo que las políticas de IAM de esa cuenta pueden
+llegar a autorizar, de modo que ninguna identidad de la cuenta puede exceder ese límite
+ni siquiera con una política permisiva.
+
+**AWS Control Tower** automatiza la puesta en marcha de un entorno multicuenta conforme
+a las buenas prácticas. Crea la estructura inicial de cuentas y unidades organizativas,
+aplica barreras de protección (_guardrails_) que impiden las configuraciones prohibidas
+o señalan las desviaciones detectadas, y ofrece un cuadro de mando con el estado de
+cumplimiento del conjunto.
+
+**AWS Service Catalog** delimita el conjunto de servicios y recursos que los equipos
+pueden desplegar por sí mismos. La organización define, organiza y comparte productos
+aprobados y preconfigurados, con lo que el autoservicio deja de entrar en conflicto con
+la gobernanza. **AWS License Manager** administra las licencias de _software_ asociadas
+a las cargas de trabajo y ayuda a ajustar su coste, evitando tanto el incumplimiento de
+los términos de licencia como la compra de más licencias de las necesarias.
+
+### Estado del servicio y recomendaciones
+
+**AWS Health Dashboard** informa del estado de los servicios de AWS y, sobre todo, de
+los eventos que afectan de forma concreta a los recursos de la cuenta propia, como el
+mantenimiento programado de una instancia o la degradación de un servicio en una región
+determinada.
+
+**AWS Trusted Advisor** actúa como un asesor automatizado que inspecciona la cuenta y
+emite recomendaciones agrupadas en cinco categorías, la optimización de costes, el
+rendimiento, la seguridad, la tolerancia a fallos y los límites de servicio. Su utilidad
+reside en detectar de forma sistemática lo que una revisión manual pasa por alto, como
+un volumen que nadie utiliza, un _bucket_ con permisos excesivos o una cuota a punto de
+agotarse.
+
+## Costes y facturación
+
+AWS factura bajo un modelo de pago por uso, sin inversión inicial ni compromiso
+obligatorio, y aplica descuentos derivados de la economía de escala a medida que crece
+el consumo. Sobre esa base, comprometer un uso sostenido durante uno o tres años reduce
+el precio unitario, tal y como se describió en los modelos de precios de EC2.
+
+Tres dimensiones concentran la mayor parte de la factura. La primera es el **cómputo**,
+que se paga por el tiempo que los recursos permanecen en ejecución. La segunda es el
+**almacenamiento**, que depende del volumen de datos conservado y de la clase de
+almacenamiento elegida. La tercera es la **transferencia de datos**, cuyo comportamiento
+conviene subrayar, ya que la entrada de datos hacia AWS habitualmente no tiene coste,
+mientras que la salida hacia Internet (_outbound_) sí lo tiene, al igual que una parte
+significativa del tráfico entre zonas de disponibilidad y entre regiones.
+
+### Herramientas de gestión del gasto
+
+| Servicio                            | Función                                                                                                                                                              |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AWS Billing and Cost Management** | Centraliza la facturación, con los cargos vigentes, el uso, las previsiones, las facturas, los pagos y los presupuestos.                                             |
+| **AWS Budgets**                     | Define presupuestos de coste, de uso o de aprovechamiento de _Savings Plans_ y _Reserved Instances_, y avisa cuando se superan los umbrales fijados.                 |
+| **AWS Cost Explorer**               | Analiza la evolución del gasto con gráficos e informes, proyecta la tendencia futura y sugiere oportunidades de ahorro, entre ellas compras de _Reserved Instances_. |
+| **AWS Pricing Calculator**          | Estima el coste de una arquitectura antes de desplegarla y compara configuraciones alternativas de cómputo, almacenamiento y transferencia de datos.                 |
+
+### Optimización de costes
+
+La mayor parte del ahorro en la capa de cómputo procede de ajustar la capacidad a la
+demanda real. El redimensionamiento de las instancias de EC2, apoyado en las
+recomendaciones de **AWS Compute Optimizer**, identifica los recursos sobredimensionados
+que consumen presupuesto sin aportar rendimiento. Las _Spot Instances_ permiten
+aprovechar capacidad no utilizada con descuentos de hasta el 90 % frente al precio
+_On-Demand_ en las cargas flexibles y tolerantes a interrupciones. El escalado
+automático adapta la capacidad a las necesidades de la aplicación y evita el
+sobredimensionamiento permanente al que conduce el ajuste manual. A todo ello se añade
+una práctica elemental y a menudo olvidada, la eliminación de los recursos que ya no se
+utilizan pero siguen facturando, como instancias detenidas con volúmenes asociados,
+volúmenes de EBS huérfanos y _snapshots_ antiguos.
+
+En la capa de datos el criterio es equivalente. Una base de datos de RDS debe
+dimensionarse según su carga real, y cuando el patrón de acceso está dominado por las
+lecturas resulta más económico añadir réplicas de lectura o una caché de ElastiCache que
+ampliar la instancia principal. En S3, la elección de la clase de almacenamiento
+adecuada marca la diferencia, con S3 Intelligent-Tiering como opción indicada cuando el
+patrón de acceso es variable o desconocido. Comprimir los datos, especialmente los
+archivos de texto, y definir reglas de ciclo de vida que eliminen las versiones antiguas
+y las copias de seguridad que han dejado de ser necesarias completan la optimización del
+almacenamiento.
+
+Queda la transferencia de datos, que suele ser la partida menos evidente. Diseñar la
+arquitectura para que el tráfico no cruce innecesariamente entre zonas de disponibilidad
+ni salga a Internet reduce esa factura de forma directa. Los **_VPC endpoints_**
+contribuyen a ese objetivo al permitir que la VPC alcance servicios como S3 a través de
+la red privada de AWS, sin pasar por Internet público, lo que además de recortar el
+coste de transferencia mejora la postura de seguridad. La idea de fondo es que muchas
+optimizaciones pequeñas distribuidas entre varios servicios producen un ahorro
+considerable y, en la mayoría de los casos, mejoran al mismo tiempo el rendimiento, la
+fiabilidad y la eficiencia operativa.
+
+## Soporte y ecosistema
+
+AWS publica un volumen considerable de material de consulta gratuito, que constituye la
+primera vía de resolución de dudas. Incluye la documentación oficial con las guías de
+usuario y de los SDK, los _whitepapers_ de arquitectura, el blog de AWS y la comunidad
+AWS re:Post, donde se plantean y resuelven preguntas técnicas.
+
+Cuando el material de consulta no basta, los **planes de soporte** determinan el nivel
+de asistencia disponible. Los tiempos de respuesta son acumulativos, de modo que cada
+plan mantiene los compromisos del anterior y añade los propios de los casos más graves.
+
+| Plan                   | Uso recomendado                                      | Respuesta y acompañamiento                                                                                                                                                 |
+| :--------------------- | :--------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Basic**              | Incluido en todas las cuentas de AWS.                | Atención de consultas de cuenta y facturación, documentación, _whitepapers_, AWS re:Post y las comprobaciones básicas de Trusted Advisor. No permite abrir casos técnicos. |
+| **Developer**          | Experimentación y pruebas en AWS.                    | Orientación general en menos de 24 horas y sistema afectado en menos de 12 horas.                                                                                          |
+| **Business**           | Nivel mínimo recomendado para cargas de producción.  | Sistema de producción afectado en menos de 4 horas y fuera de servicio en menos de 1 hora, con el conjunto completo de comprobaciones de Trusted Advisor.                  |
+| **Enterprise On-Ramp** | Producción con operaciones críticas para el negocio. | Sistema crítico para el negocio fuera de servicio en menos de 30 minutos y orientación proactiva de un grupo de gestores técnicos de cuenta.                               |
+| **Enterprise**         | Cargas críticas para el negocio y de misión crítica. | Sistema de misión crítica fuera de servicio en menos de 15 minutos, recomendaciones prioritarias del equipo de cuenta y un gestor técnico de cuenta designado.             |
+
+El acompañamiento de un **gestor técnico de cuenta** (_Technical Account Manager_, TAM)
+aparece únicamente en los dos últimos planes y es la diferencia cualitativa entre ellos
+y los anteriores, ya que aporta orientación arquitectónica y operativa continuada en
+lugar de respuesta puntual a incidencias.
+
+Más allá del soporte, dos elementos completan el ecosistema. **AWS Marketplace** es un
+catálogo digital de _software_ de terceros listo para desplegar, que incluye
+aplicaciones en modalidad SaaS, modelos preentrenados, conjuntos de datos y herramientas
+de análisis, con la ventaja de que su facturación se integra en la de AWS. La **AWS
+Partner Network** (APN) agrupa a los socios consultores y tecnológicos que construyen y
+comercializan soluciones sobre AWS, a los que el programa proporciona apoyo técnico, de
+_marketing_ y de comercialización.
