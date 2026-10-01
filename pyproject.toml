@@ -16,7 +16,7 @@ classifiers = [
 ]
 keywords = ["machine learning", "data science", "software", "wiki"]
 dependencies = [
-    "zensical==0.0.62",
+    "zensical==0.0.66",
 ]
 
 [tool.uv]
